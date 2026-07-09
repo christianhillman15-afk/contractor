@@ -45,10 +45,13 @@
     var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     var frames = [];
     var loaded = 0, failed = 0, ready = false, lastDrawn = -1;
-    var total = opts.count || 0;
+    /* frames can be an explicit list of URLs (opts.list) or a
+       numbered pattern (path/prefix/pad/ext/first/count) */
+    var total = opts.list ? opts.list.length : (opts.count || 0);
     if (!total) { onFail(); return null; }
 
     function src(i) {
+      if (opts.list) return opts.list[i];
       var n = String(opts.first + i);
       while (n.length < (opts.pad || 4)) n = "0" + n;
       return opts.path + (opts.prefix || "frame_") + n + "." + (opts.ext || "jpg");
