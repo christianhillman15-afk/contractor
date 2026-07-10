@@ -10,13 +10,24 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
+  <!-- No-JS safety: page must read as a normal document without the scrub -->
+  <noscript>
+    <style>
+      .build-scroll { height: auto !important; }
+      .build-stage { position: static !important; height: auto !important; min-height: 60vh; }
+      .build-canvas, .build-video, .tracker, .scroll-cue, .build-loading { display: none !important; }
+      .chapters { position: static !important; }
+      .chapter { position: static !important; opacity: 1 !important; visibility: visible !important; transform: none !important; margin: 20px auto; }
+      .reveal { opacity: 1 !important; transform: none !important; }
+    </style>
+  </noscript>
 </head>
 <body>
 
   <!-- ============ NAV ============ -->
   <header class="nav" id="nav">
     <div class="nav__inner container">
-      <a class="nav__brand" href="#top" data-config="brandName">
+      <a class="nav__brand" href="#top">
         <svg class="nav__logo" viewBox="0 0 64 64" aria-hidden="true">
           <path d="M8 34 32 14l24 20v22H8z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
         </svg>
@@ -263,7 +274,7 @@
         </div>
 
         <!-- Frames-mode loading indicator -->
-        <div class="build-loading" id="buildLoading" hidden>
+        <div class="build-loading" id="buildLoading" role="status" aria-live="polite" hidden>
           <div class="build-loading__bar"><span id="buildLoadingFill"></span></div>
           <p>Loading build sequence…</p>
         </div>
@@ -455,7 +466,7 @@
         </div>
         <form class="contact__form reveal" name="contact" method="POST" data-netlify="true" netlify-honeypot="company">
           <input type="hidden" name="form-name" value="contact" />
-          <p class="hp"><label>Don't fill this out: <input name="company" /></label></p>
+          <p class="hp" aria-hidden="true"><label>Don't fill this out: <input name="company" tabindex="-1" autocomplete="off" /></label></p>
           <div class="field-row">
             <label class="field"><span>Name</span><input type="text" name="name" required autocomplete="name" placeholder="Jane Doe" /></label>
             <label class="field"><span>Phone</span><input type="tel" name="phone" autocomplete="tel" placeholder="(555) 555-0100" /></label>

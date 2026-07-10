@@ -41,7 +41,7 @@ This template ships with a sequence generated on [Higgsfield](https://higgsfield
 > no watermarks, zero camera movement, locked composition, smooth continuous
 > transformation.
 
-**Pro way (multi-segment, DK3-style):** generate keyframe *images* of each
+**Pro way (multi-segment):** generate keyframe *images* of each
 construction phase (same composition), then chain **image-to-video** segments
 using each phase image as `start_image` and the next as `end_image`
 (Kling 3.0 supports start+end frames). Concatenate the clips. You get a much
@@ -104,7 +104,12 @@ js/config.js             ← the file you edit per client
 js/scroll-engine.js      scroll-build engine + 3 renderers
 js/main.js               nav, reveals, counters, testimonials
 assets/build-sequence/   frame_0001.jpg … (the scrub footage)
+dist/groundup-demo.html  single-file demo build (all assets inlined)
 ```
+
+Frames can also be listed explicitly (custom filenames / CDN URLs) via
+`frames: { list: ["…", "…"] }` in `js/config.js`, and the hero's scroll
+length is tuned with `buildAnimation.scrollLength` (viewport-heights).
 
 ## Browser support
 

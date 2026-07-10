@@ -28,7 +28,8 @@ window.SITE_CONFIG = {
   buildAnimation: {
     mode: "frames",
 
-    /* frames mode */
+    /* frames mode — numbered pattern…
+       (or supply an explicit array instead: frames: { list: [url, url, …] }) */
     frames: {
       path: "assets/build-sequence/",   // folder with the exported frames
       prefix: "frame_",                 // frame_0001.jpg, frame_0002.jpg …
@@ -44,7 +45,7 @@ window.SITE_CONFIG = {
     },
 
     /* how many viewport-heights of scrolling the build lasts (bigger =
-       slower, more cinematic). Matches .build-scroll height in CSS. */
+       slower, more cinematic). Applied to the hero section at startup. */
     scrollLength: 5.6
   }
 };

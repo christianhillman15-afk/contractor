@@ -39,6 +39,7 @@
       if (e.target.tagName === "A") {
         links.classList.remove("is-open");
         burger.setAttribute("aria-expanded", "false");
+        burger.setAttribute("aria-label", "Open menu");
       }
     });
   }
@@ -88,20 +89,36 @@
   if (quotesWrap) {
     var quotes = quotesWrap.querySelectorAll(".quote");
     var dots = quotesWrap.querySelectorAll(".quotes__dot");
+    var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     var active = 0, timer = null;
     function show(i) {
       active = (i + quotes.length) % quotes.length;
       quotes.forEach(function (q, j) { q.classList.toggle("is-active", j === active); });
-      dots.forEach(function (d, j) { d.classList.toggle("is-active", j === active); });
+      dots.forEach(function (d, j) {
+        d.classList.toggle("is-active", j === active);
+        d.setAttribute("aria-current", j === active ? "true" : "false");
+      });
     }
-    function auto() { timer = setInterval(function () { show(active + 1); }, 6500); }
+    /* auto-rotate pauses on hover/focus and is off for reduced motion */
+    function auto() {
+      if (reduceMotion) return;
+      timer = setInterval(function () { show(active + 1); }, 6500);
+    }
+    function pause() { clearInterval(timer); timer = null; }
+    quotesWrap.addEventListener("mouseenter", pause);
+    quotesWrap.addEventListener("mouseleave", function () { if (!timer) auto(); });
+    quotesWrap.addEventListener("focusin", pause);
+    quotesWrap.addEventListener("focusout", function () {
+      if (!quotesWrap.contains(document.activeElement)) { if (!timer) auto(); }
+    });
     dots.forEach(function (d, i) {
       d.addEventListener("click", function () {
-        clearInterval(timer);
+        pause();
         show(i);
         auto();
       });
     });
+    show(0);
     auto();
   }
 

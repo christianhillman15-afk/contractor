@@ -25,6 +25,11 @@
 
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  /* scroll length (in viewport-heights) comes from config; the CSS
+     height uses calc(var(--build-len, 5.6) * 100vh) so the
+     reduced-motion height:auto override still wins */
+  if (cfg.scrollLength > 0) section.style.setProperty("--build-len", cfg.scrollLength);
+
   var clamp = function (v, a, b) { return Math.max(a, Math.min(b, v)); };
   var lerp = function (a, b, t) { return a + (b - a) * t; };
   /* progress of p through the window [a, b], clamped 0..1 */
@@ -58,6 +63,7 @@
     }
 
     if (loadingEl) loadingEl.hidden = false;
+    stage.classList.add("is-loading");
 
     for (var i = 0; i < total; i++) {
       (function (i) {
@@ -75,8 +81,18 @@
       if (loadingFill) loadingFill.style.width = Math.round((loaded / total) * 100) + "%";
       if (loaded >= total) {
         if (loadingEl) loadingEl.hidden = true;
-        /* tolerate a stray missing frame, but a broken sequence = fall back */
-        if (failed > Math.max(2, total * 0.05)) { onFail(); return; }
+        stage.classList.remove("is-loading");
+        /* tolerate a stray missing frame, but a broken sequence = fall back:
+           release the images and the resize listener before handing off */
+        if (failed > Math.max(2, total * 0.05)) {
+          window.removeEventListener("resize", resize);
+          for (var j = 0; j < frames.length; j++) {
+            if (frames[j]) { frames[j].onload = frames[j].onerror = null; frames[j].src = ""; }
+          }
+          frames.length = 0;
+          onFail();
+          return;
+        }
         ready = true;
         stage.classList.add("mode-frames");
         lastDrawn = -1;
@@ -96,9 +112,19 @@
     function draw(p) {
       if (!ready) return;
       var idx = clamp(Math.round(p * (total - 1)), 0, total - 1);
-      /* skip past any frame that individually failed */
-      var guard = 0;
-      while (frames[idx] && !frames[idx].naturalWidth && guard++ < total) idx = (idx + 1) % total;
+      /* skip past any frame that individually failed — search forward,
+         then backward; never wrap (a missing final frame must resolve to
+         the finished house, not the empty lot) */
+      if (frames[idx] && !frames[idx].naturalWidth) {
+        var j = idx;
+        while (j < total && frames[j] && !frames[j].naturalWidth) j++;
+        if (j >= total) {
+          j = idx;
+          while (j >= 0 && frames[j] && !frames[j].naturalWidth) j--;
+        }
+        if (j < 0 || j >= total) return;
+        idx = j;
+      }
       if (idx === lastDrawn) return;
       var img = frames[idx];
       if (!img || !img.naturalWidth) return;
@@ -123,12 +149,17 @@
 
     var ready = false;
     video.src = opts.src;
+    stage.classList.add("is-loading");
     video.addEventListener("loadedmetadata", function () {
       ready = true;
+      stage.classList.remove("is-loading");
       stage.classList.add("mode-video");
       notifyReady();
     });
-    video.addEventListener("error", function () { onFail(); });
+    video.addEventListener("error", function () {
+      stage.classList.remove("is-loading");
+      onFail();
+    });
     video.load();
 
     var target = 0, applied = -1;
@@ -149,7 +180,7 @@
     var $ = function (id) { return document.getElementById(id); };
     var svg = $("houseSvg");
     if (!svg) return null;
-    stage.classList.remove("mode-frames", "mode-video");
+    stage.classList.remove("mode-frames", "mode-video", "is-loading");
 
     /* prep stroke-draw elements */
     function prepDraw(el) {
@@ -290,7 +321,11 @@
      ---------------------------------------------------------- */
   var renderer = null;
 
-  function useProcedural() { renderer = ProceduralRenderer(); }
+  function useProcedural() {
+    renderer = ProceduralRenderer();
+    /* async fallbacks land after the engine has started; paint right away */
+    notifyReady();
+  }
   function useVideo() {
     renderer = VideoScrubRenderer(cfg.video || {}, function () {
       console.warn("[groundup] video failed to load — falling back to procedural build");
@@ -312,11 +347,20 @@
   else if (cfg.mode === "video") useVideo();
   else useProcedural();
 
-  /* Reduced motion: show the finished house, skip the scrub */
+  /* Reduced motion: show the finished house, skip the scrub. The hero
+     chapter (the page's h1 + primary CTAs) stays visible instead of the
+     scroll-position fades, which would hide it at p=1. */
   if (reduceMotion) {
     var park = function () {
       if (renderer) renderer.render(1);
-      renderUI(1);
+      trackerItems.forEach(function (t) { t.el.classList.add("is-done"); });
+      if (cue) cue.classList.add("is-hidden");
+      chapters.forEach(function (c) {
+        var isHero = c.from <= 0;
+        c.el.style.opacity = isHero ? 1 : 0;
+        c.el.style.visibility = isHero ? "visible" : "hidden";
+        c.el.style.translate = "0 0";
+      });
     };
     repaint = park;
     park();
