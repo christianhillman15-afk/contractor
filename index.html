@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meridian Builders — From Blueprint to Reality</title>
+  <meta name="description" content="Award-winning residential contractor. Custom homes, renovations and additions — built with precision, delivered on time." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M8 34 32 14l24 20v22H8z' fill='none' stroke='%23f59e0b' stroke-width='5' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <!-- No-JS safety: page must read as a normal document without the scrub -->
+  <noscript>
+    <style>
+      .build-scroll { height: auto !important; }
+      .build-stage { position: static !important; height: auto !important; min-height: 60vh; }
+      .build-canvas, .build-video, .tracker, .scroll-cue, .build-loading { display: none !important; }
+      .chapters { position: static !important; }
+      .chapter { position: static !important; opacity: 1 !important; visibility: visible !important; transform: none !important; margin: 20px auto; }
+      .reveal { opacity: 1 !important; transform: none !important; }
+    </style>
+  </noscript>
+</head>
+<body>
+
+  <!-- ============ NAV ============ -->
+  <header class="nav" id="nav">
+    <div class="nav__inner container">
+      <a class="nav__brand" href="#top">
+        <svg class="nav__logo" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M8 34 32 14l24 20v22H8z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
+        </svg>
+        <span data-config-text="brandName">Meridian Builders</span>
+      </a>
+      <nav class="nav__links" id="navLinks" aria-label="Primary">
+        <a href="#services">Services</a>
+        <a href="#process">Process</a>
+        <a href="#projects">Projects</a>
+        <a href="#reviews">Reviews</a>
+        <a href="#contact">Contact</a>
+        <a href="#contact" class="btn btn--sm btn--accent nav__cta">Get a Quote</a>
+      </nav>
+      <button class="nav__burger" id="navBurger" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main id="top">
+
+    <!-- ============ SCROLL-BUILD HERO ============ -->
+    <!--
+      The signature section. A tall scroller pins the stage while the house
+      assembles itself in sync with scroll position.
+
+      Modes (set in js/config.js → buildAnimation.mode):
+        'procedural' — code-drawn build (ships working, no assets needed)
+        'frames'     — Higgsfield video exported as a JPG frame sequence
+        'video'      — Higgsfield MP4 scrubbed directly
+    -->
+    <section class="build-scroll" id="buildScroll" aria-label="Watch the house build itself as you scroll">
+      <div class="build-stage" id="buildStage">
+
+        <div class="build-stage__bg" aria-hidden="true"></div>
+
+        <!-- Canvas used by 'frames' mode -->
+        <canvas class="build-canvas" id="buildCanvas" aria-hidden="true"></canvas>
+        <!-- Video used by 'video' mode -->
+        <video class="build-video" id="buildVideo" muted playsinline preload="auto" aria-hidden="true"></video>
+
+        <!-- Procedural SVG house -->
+        <div class="build-art" id="buildArt">
+          <svg id="houseSvg" viewBox="0 0 1000 640" role="img" aria-label="Illustration of a house being constructed from blueprint to finished home">
+            <defs>
+              <pattern id="bpGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M40 0H0v40" fill="none" stroke="var(--bp-line)" stroke-width="1"/>
+              </pattern>
+              <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="var(--accent)" stop-opacity=".55"/>
+                <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+
+            <!-- Blueprint layer -->
+            <g id="bp">
+              <rect x="0" y="0" width="1000" height="640" fill="url(#bpGrid)" opacity=".5"/>
+              <path id="bpOutline" d="M320 520 V322 M680 520 V322 M285 328 L500 202 L715 328 M320 520 H680"
+                    fill="none" stroke="var(--bp-stroke)" stroke-width="2" stroke-dasharray="7 7"/>
+              <g id="bpDims" stroke="var(--bp-stroke)" stroke-width="1.5" fill="none">
+                <path d="M320 560 H680 M320 552 v16 M680 552 v16"/>
+                <path d="M250 322 V520 M242 322 h16 M242 520 h16"/>
+              </g>
+              <text x="500" y="585" class="bp-label" text-anchor="middle">42'-0"</text>
+              <text x="228" y="425" class="bp-label" text-anchor="middle" transform="rotate(-90 228 425)">18'-6"</text>
+            </g>
+
+            <!-- Warm glow finale (behind house) -->
+            <circle id="glow" cx="500" cy="330" r="270" fill="url(#sunGlow)" opacity="0"/>
+
+            <!-- Site / ground -->
+            <g id="site">
+              <line id="groundLine" x1="110" y1="520" x2="890" y2="520" stroke="var(--line)" stroke-width="3" stroke-linecap="round"/>
+              <g id="stakes" stroke="var(--line-dim)" stroke-width="2">
+                <line x1="290" y1="520" x2="290" y2="504"/>
+                <line x1="710" y1="520" x2="710" y2="504"/>
+              </g>
+            </g>
+
+            <!-- Foundation -->
+            <g id="foundation" class="rise">
+              <rect x="300" y="508" width="400" height="12" fill="var(--concrete-dark)"/>
+              <rect x="308" y="482" width="384" height="26" fill="var(--concrete)"/>
+            </g>
+
+            <!-- Framing: studs + plates -->
+            <g id="framing" stroke="var(--wood)" stroke-width="4" stroke-linecap="round">
+              <g id="studs">
+                <line x1="322" y1="482" x2="322" y2="324"/>
+                <line x1="358" y1="482" x2="358" y2="324"/>
+                <line x1="394" y1="482" x2="394" y2="324"/>
+                <line x1="430" y1="482" x2="430" y2="324"/>
+                <line x1="466" y1="482" x2="466" y2="324"/>
+                <line x1="500" y1="482" x2="500" y2="324"/>
+                <line x1="534" y1="482" x2="534" y2="324"/>
+                <line x1="570" y1="482" x2="570" y2="324"/>
+                <line x1="606" y1="482" x2="606" y2="324"/>
+                <line x1="642" y1="482" x2="642" y2="324"/>
+                <line x1="678" y1="482" x2="678" y2="324"/>
+              </g>
+              <line id="plateTop" x1="318" y1="322" x2="682" y2="322" stroke-width="5"/>
+              <line id="plateBottom" x1="318" y1="482" x2="682" y2="482" stroke-width="5"/>
+            </g>
+
+            <!-- Roof trusses -->
+            <g id="trusses" stroke="var(--wood)" stroke-width="4" fill="none" stroke-linecap="round">
+              <path class="truss" d="M320 322 L500 208 L680 322"/>
+              <path class="truss" d="M500 208 V322"/>
+              <path class="truss" d="M410 265 L500 322 L590 265"/>
+            </g>
+
+            <!-- Walls (sheathing / siding) -->
+            <g id="walls">
+              <rect id="wallFill" x="320" y="322" width="360" height="160" fill="var(--siding)"/>
+              <polygon id="gableFill" points="320,322 680,322 500,206" fill="var(--siding-light)"/>
+              <g id="sidingLines" stroke="var(--siding-line)" stroke-width="1.5">
+                <line x1="320" y1="346" x2="680" y2="346"/>
+                <line x1="320" y1="370" x2="680" y2="370"/>
+                <line x1="320" y1="394" x2="680" y2="394"/>
+                <line x1="320" y1="418" x2="680" y2="418"/>
+                <line x1="320" y1="442" x2="680" y2="442"/>
+                <line x1="320" y1="466" x2="680" y2="466"/>
+              </g>
+            </g>
+
+            <!-- Chimney (behind roof stroke, above gable fill) -->
+            <g id="chimney" class="rise">
+              <rect x="598" y="222" width="34" height="52" fill="var(--concrete-dark)"/>
+              <rect x="594" y="214" width="42" height="10" fill="var(--concrete)"/>
+            </g>
+
+            <!-- Roof -->
+            <g id="roof">
+              <path id="roofLine" d="M281 330 L500 202 L719 330" fill="none" stroke="var(--roof)" stroke-width="16" stroke-linecap="round"/>
+              <path id="roofTrim" d="M281 330 L500 202 L719 330" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" transform="translate(0 10)" opacity=".9"/>
+            </g>
+
+            <!-- Openings -->
+            <g id="openings">
+              <g id="door" class="pop">
+                <rect x="468" y="402" width="64" height="80" rx="3" fill="var(--accent)"/>
+                <circle cx="522" cy="444" r="3.5" fill="var(--ink)"/>
+              </g>
+              <g id="winL" class="pop">
+                <rect x="355" y="372" width="60" height="44" rx="3" fill="var(--glass)" stroke="var(--line)" stroke-width="3"/>
+                <line x1="385" y1="372" x2="385" y2="416" stroke="var(--line)" stroke-width="2"/>
+              </g>
+              <g id="winR" class="pop">
+                <rect x="585" y="372" width="60" height="44" rx="3" fill="var(--glass)" stroke="var(--line)" stroke-width="3"/>
+                <line x1="615" y1="372" x2="615" y2="416" stroke="var(--line)" stroke-width="2"/>
+              </g>
+              <g id="winGable" class="pop">
+                <circle cx="500" cy="268" r="17" fill="var(--glass)" stroke="var(--line)" stroke-width="3"/>
+              </g>
+            </g>
+
+            <!-- Window lights: the finale -->
+            <g id="lights" opacity="0">
+              <rect x="358" y="375" width="54" height="38" rx="2" fill="var(--accent)" opacity=".85"/>
+              <rect x="588" y="375" width="54" height="38" rx="2" fill="var(--accent)" opacity=".85"/>
+              <circle cx="500" cy="268" r="13" fill="var(--accent)" opacity=".85"/>
+            </g>
+
+            <!-- Steps + path -->
+            <g id="entry">
+              <g id="steps" fill="var(--concrete-dark)">
+                <rect x="462" y="488" width="76" height="10"/>
+                <rect x="452" y="498" width="96" height="10"/>
+                <rect x="442" y="508" width="116" height="12"/>
+              </g>
+              <polygon id="path" points="462,522 538,522 584,640 416,640" fill="var(--concrete)" opacity=".5"/>
+            </g>
+
+            <!-- Landscaping -->
+            <g id="landscape">
+              <g id="treeL" class="pop-ground">
+                <rect x="188" y="462" width="12" height="58" fill="var(--wood)"/>
+                <circle cx="194" cy="436" r="34" fill="var(--leaf)"/>
+                <circle cx="170" cy="452" r="22" fill="var(--leaf)"/>
+                <circle cx="220" cy="452" r="22" fill="var(--leaf)"/>
+              </g>
+              <g id="bushR" class="pop-ground">
+                <circle cx="756" cy="504" r="20" fill="var(--leaf)"/>
+                <circle cx="784" cy="508" r="15" fill="var(--leaf)"/>
+                <circle cx="734" cy="510" r="13" fill="var(--leaf)"/>
+              </g>
+              <g id="bushL" class="pop-ground">
+                <circle cx="268" cy="508" r="14" fill="var(--leaf)"/>
+                <circle cx="290" cy="511" r="11" fill="var(--leaf)"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <!-- Copy chapters, revealed by scroll progress -->
+        <div class="chapters" id="chapters" aria-hidden="false">
+          <div class="chapter chapter--hero" data-from="0" data-to="0.09">
+            <p class="eyebrow">Licensed &amp; insured · Est. 2005</p>
+            <h1>From blueprint<br/>to <span class="accent">reality.</span></h1>
+            <p class="chapter__sub">Keep scrolling — watch your next home rise from the ground up.</p>
+            <div class="chapter__actions">
+              <a class="btn btn--accent" href="#contact">Start Your Build</a>
+              <a class="btn btn--ghost" href="#projects">See Our Work</a>
+            </div>
+          </div>
+          <div class="chapter" data-from="0.14" data-to="0.27">
+            <p class="eyebrow">01 · Sitework &amp; Foundation</p>
+            <h2>Foundations<br/>that last.</h2>
+            <p class="chapter__sub">Engineered footings, poured and cured right. Everything above depends on what's below.</p>
+          </div>
+          <div class="chapter" data-from="0.33" data-to="0.51">
+            <p class="eyebrow">02 · Framing</p>
+            <h2>Framed with<br/>precision.</h2>
+            <p class="chapter__sub">Straight walls, true corners, engineered trusses — a skeleton built to code and beyond.</p>
+          </div>
+          <div class="chapter" data-from="0.58" data-to="0.75">
+            <p class="eyebrow">03 · Exterior &amp; Finishes</p>
+            <h2>Details make<br/>the difference.</h2>
+            <p class="chapter__sub">Weather-tight roofing, clean siding lines, windows and doors set to the millimeter.</p>
+          </div>
+          <div class="chapter" data-from="0.86" data-to="1">
+            <p class="eyebrow">04 · Handover</p>
+            <h2>Welcome<br/><span class="accent">home.</span></h2>
+            <p class="chapter__sub">On time, on budget, keys in hand. That's the Meridian standard.</p>
+            <div class="chapter__actions">
+              <a class="btn btn--accent" href="#contact">Get Your Free Quote</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Build-phase tracker -->
+        <ol class="tracker" id="tracker" aria-hidden="true">
+          <li data-at="0.04"><span class="tracker__dot"></span>Site</li>
+          <li data-at="0.18"><span class="tracker__dot"></span>Foundation</li>
+          <li data-at="0.4"><span class="tracker__dot"></span>Framing</li>
+          <li data-at="0.63"><span class="tracker__dot"></span>Exterior</li>
+          <li data-at="0.9"><span class="tracker__dot"></span>Complete</li>
+        </ol>
+
+        <!-- Scroll cue -->
+        <div class="scroll-cue" id="scrollCue" aria-hidden="true">
+          <span>Scroll to build</span>
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 4v14m0 0 6-6m-6 6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+
+        <!-- Frames-mode loading indicator -->
+        <div class="build-loading" id="buildLoading" role="status" aria-live="polite" hidden>
+          <div class="build-loading__bar"><span id="buildLoadingFill"></span></div>
+          <p>Loading build sequence…</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ TRUST BAR ============ -->
+    <section class="trustbar" aria-label="Credentials">
+      <div class="container trustbar__inner">
+        <span>★ 4.9 on Google</span><i></i>
+        <span>Licensed &amp; Insured</span><i></i>
+        <span>20 Years in Business</span><i></i>
+        <span>350+ Projects Delivered</span><i></i>
+        <span>2-Year Workmanship Warranty</span>
+      </div>
+    </section>
+
+    <!-- ============ SERVICES ============ -->
+    <section class="section" id="services">
+      <div class="container">
+        <div class="section__head reveal">
+          <p class="eyebrow">What we do</p>
+          <h2>Built for every stage<br/>of your project.</h2>
+        </div>
+        <div class="cards">
+          <article class="card reveal">
+            <svg class="card__icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M6 26 24 10l18 16M12 22v18h24V22" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h3>Custom Homes</h3>
+            <p>Ground-up builds tailored to your land, lifestyle and budget — from first sketch to final walkthrough.</p>
+          </article>
+          <article class="card reveal">
+            <svg class="card__icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 40h32M12 40V16l12-8 12 8v24M20 40v-10h8v10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h3>Renovations</h3>
+            <p>Whole-home transformations that respect the bones of your house and modernize everything else.</p>
+          </article>
+          <article class="card reveal">
+            <svg class="card__icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 40V20l10-8v28m0-28h22v28H8m30-16h-8v16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h3>Additions</h3>
+            <p>Second stories, in-law suites and extensions that blend seamlessly with the original structure.</p>
+          </article>
+          <article class="card reveal">
+            <svg class="card__icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 14h32v6H8zM12 20v18m24-18v18M8 38h32M20 27h8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h3>Kitchens &amp; Baths</h3>
+            <p>The rooms that sell homes and shape daily life, finished with millwork-level attention.</p>
+          </article>
+          <article class="card reveal">
+            <svg class="card__icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M6 26 24 10l18 16M10 24l14-12 14 12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h3>Roofing &amp; Exteriors</h3>
+            <p>Roofing, siding, windows and decks — weather-tight envelopes with clean architectural lines.</p>
+          </article>
+          <article class="card reveal">
+            <svg class="card__icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 40h32M12 40V12h24v28M18 18h4m4 0h4m-12 8h4m4 0h4m-12 8h4m4 0h4" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h3>Commercial</h3>
+            <p>Tenant improvements and light commercial builds delivered around your business hours.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PROCESS ============ -->
+    <section class="section section--alt" id="process">
+      <div class="container">
+        <div class="section__head reveal">
+          <p class="eyebrow">How it works</p>
+          <h2>A process you can<br/>set your watch to.</h2>
+        </div>
+        <ol class="steps">
+          <li class="step reveal">
+            <span class="step__num">01</span>
+            <h3>Consult</h3>
+            <p>A free on-site visit. We listen, measure, and give you straight answers on scope and budget.</p>
+          </li>
+          <li class="step reveal">
+            <span class="step__num">02</span>
+            <h3>Design &amp; Quote</h3>
+            <p>Detailed drawings and a fixed, line-item quote. No allowances games, no surprises later.</p>
+          </li>
+          <li class="step reveal">
+            <span class="step__num">03</span>
+            <h3>Build</h3>
+            <p>A dedicated project manager, a live schedule you can check anytime, and a clean site every night.</p>
+          </li>
+          <li class="step reveal">
+            <span class="step__num">04</span>
+            <h3>Deliver</h3>
+            <p>Walkthrough, punch list, warranty docs — and keys in your hand on the date we promised.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ============ STATS ============ -->
+    <section class="stats" aria-label="Track record">
+      <div class="container stats__inner">
+        <div class="stat reveal"><span class="stat__num" data-count="350" data-suffix="+">0</span><span class="stat__label">Projects completed</span></div>
+        <div class="stat reveal"><span class="stat__num" data-count="20" data-suffix=" yrs">0</span><span class="stat__label">In business</span></div>
+        <div class="stat reveal"><span class="stat__num" data-count="98" data-suffix="%">0</span><span class="stat__label">Delivered on time</span></div>
+        <div class="stat reveal"><span class="stat__num" data-count="4.9" data-decimals="1" data-suffix="★">0</span><span class="stat__label">Average rating</span></div>
+      </div>
+    </section>
+
+    <!-- ============ PROJECTS ============ -->
+    <section class="section" id="projects">
+      <div class="container">
+        <div class="section__head reveal">
+          <p class="eyebrow">Recent work</p>
+          <h2>Projects we're<br/>proud to sign.</h2>
+        </div>
+        <div class="gallery">
+          <a class="project reveal" href="#contact" style="--ph1:#1c2f46;--ph2:#3b5e83">
+            <svg class="project__art" viewBox="0 0 400 260" aria-hidden="true"><path d="M60 180 200 80l140 100M110 160v70h180v-70M180 230v-40h40v40" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="project__meta"><span class="chip">Custom Home</span><h3>Hillcrest Modern Farmhouse</h3><p>3,400 sq ft · 9-month build</p></div>
+          </a>
+          <a class="project reveal" href="#contact" style="--ph1:#3c2a1c;--ph2:#7a5230">
+            <svg class="project__art" viewBox="0 0 400 260" aria-hidden="true"><path d="M70 220h260M90 220V110h220v110M90 150h220M150 110V70h100v40" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="project__meta"><span class="chip">Renovation</span><h3>Maple Ave Full-Gut Reno</h3><p>1920s craftsman · Down to the studs</p></div>
+          </a>
+          <a class="project reveal" href="#contact" style="--ph1:#1e3a34;--ph2:#3f7a6b">
+            <svg class="project__art" viewBox="0 0 400 260" aria-hidden="true"><path d="M60 220V120l80-50v150m0-150h200v150H60m200-100h-60v100" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="project__meta"><span class="chip">Addition</span><h3>Lakeside Second Story</h3><p>+1,100 sq ft · Family stayed home</p></div>
+          </a>
+          <a class="project reveal" href="#contact" style="--ph1:#33203a;--ph2:#6b4d7a">
+            <svg class="project__art" viewBox="0 0 400 260" aria-hidden="true"><path d="M80 90h240v30H80zM100 120v90m200-90v90M80 210h240M160 165h80" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="project__meta"><span class="chip">Kitchen</span><h3>Oakwood Chef's Kitchen</h3><p>Quartz · Custom cabinetry · 6 weeks</p></div>
+          </a>
+          <a class="project reveal" href="#contact" style="--ph1:#16324a;--ph2:#2e6a94">
+            <svg class="project__art" viewBox="0 0 400 260" aria-hidden="true"><path d="M50 160 200 60l150 100M70 150l130-88 130 88" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="project__meta"><span class="chip">Roofing</span><h3>Cedar Ridge Re-Roof</h3><p>Standing seam metal · 3 days</p></div>
+          </a>
+          <a class="project reveal" href="#contact" style="--ph1:#3a2b16;--ph2:#8a6a33">
+            <svg class="project__art" viewBox="0 0 400 260" aria-hidden="true"><path d="M60 220h280M80 220V100h240v120M80 140h240M140 100V60h120v40" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="project__meta"><span class="chip">Commercial</span><h3>Main St Retail Fit-Out</h3><p>4,000 sq ft · Zero business days lost</p></div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ TESTIMONIALS ============ -->
+    <section class="section section--alt" id="reviews">
+      <div class="container">
+        <div class="section__head reveal">
+          <p class="eyebrow">Word of mouth</p>
+          <h2>Clients who'd<br/>build with us again.</h2>
+        </div>
+        <div class="quotes reveal" id="quotes">
+          <figure class="quote is-active">
+            <blockquote>"They said nine months. They handed us the keys in eight and a half. Every sub who walked through our site was respectful and every question got a same-day answer."</blockquote>
+            <figcaption><strong>Sarah &amp; James Whitfield</strong><span>Custom home, Hillcrest</span></figcaption>
+          </figure>
+          <figure class="quote">
+            <blockquote>"We lived in the house through a full-gut renovation. The crew sealed off the work zone, swept up every single night, and the finish work is flawless."</blockquote>
+            <figcaption><strong>Dana Okafor</strong><span>Renovation, Maple Ave</span></figcaption>
+          </figure>
+          <figure class="quote">
+            <blockquote>"Fixed quote meant fixed quote. The one change order we made was priced fairly and documented the same afternoon. You don't find that often."</blockquote>
+            <figcaption><strong>Miguel Herrera</strong><span>Addition, Lakeside</span></figcaption>
+          </figure>
+          <div class="quotes__nav" role="group" aria-label="Testimonial navigation">
+            <button class="quotes__dot is-active" aria-label="Show testimonial 1"></button>
+            <button class="quotes__dot" aria-label="Show testimonial 2"></button>
+            <button class="quotes__dot" aria-label="Show testimonial 3"></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CTA BAND ============ -->
+    <section class="cta">
+      <div class="container cta__inner reveal">
+        <h2>Ready to break ground?</h2>
+        <p>Free on-site consultation. Fixed quotes in 10 days. Zero pressure.</p>
+        <a class="btn btn--accent btn--lg" href="#contact">Book Your Consultation</a>
+      </div>
+    </section>
+
+    <!-- ============ CONTACT ============ -->
+    <section class="section" id="contact">
+      <div class="container contact">
+        <div class="contact__info reveal">
+          <p class="eyebrow">Get in touch</p>
+          <h2>Tell us about<br/>your project.</h2>
+          <p class="contact__blurb">Send a few details and we'll come back within one business day with next steps and a consultation slot.</p>
+          <ul class="contact__list">
+            <li><span>Call</span><a href="tel:+15555550134" data-config-text="phone">(555) 555-0134</a></li>
+            <li><span>Email</span><a href="mailto:hello@meridianbuilders.example" data-config-text="email">hello@meridianbuilders.example</a></li>
+            <li><span>Office</span><span data-config-text="address">418 Granite Way, Suite 2, Boulder CO</span></li>
+            <li><span>Hours</span><span>Mon–Fri 7am–5pm · Sat by appointment</span></li>
+          </ul>
+        </div>
+        <form class="contact__form reveal" name="contact" method="POST" data-netlify="true" netlify-honeypot="company">
+          <input type="hidden" name="form-name" value="contact" />
+          <p class="hp" aria-hidden="true"><label>Don't fill this out: <input name="company" tabindex="-1" autocomplete="off" /></label></p>
+          <div class="field-row">
+            <label class="field"><span>Name</span><input type="text" name="name" required autocomplete="name" placeholder="Jane Doe" /></label>
+            <label class="field"><span>Phone</span><input type="tel" name="phone" autocomplete="tel" placeholder="(555) 555-0100" /></label>
+          </div>
+          <label class="field"><span>Email</span><input type="email" name="email" required autocomplete="email" placeholder="jane@email.com" /></label>
+          <label class="field"><span>Project type</span>
+            <select name="project">
+              <option>Custom home</option>
+              <option>Renovation</option>
+              <option>Addition</option>
+              <option>Kitchen or bath</option>
+              <option>Roofing / exterior</option>
+              <option>Commercial</option>
+              <option>Something else</option>
+            </select>
+          </label>
+          <label class="field"><span>Tell us more</span><textarea name="message" rows="4" placeholder="Timeline, budget range, what you're dreaming of…"></textarea></label>
+          <button class="btn btn--accent btn--lg" type="submit">Send Message</button>
+          <p class="form-note">We reply within one business day. Your details never leave our office.</p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <svg class="nav__logo" viewBox="0 0 64 64" aria-hidden="true"><path d="M8 34 32 14l24 20v22H8z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/></svg>
+        <span data-config-text="brandName">Meridian Builders</span>
+      </div>
+      <nav class="footer__links" aria-label="Footer">
+        <a href="#services">Services</a>
+        <a href="#process">Process</a>
+        <a href="#projects">Projects</a>
+        <a href="#reviews">Reviews</a>
+        <a href="#contact">Contact</a>
+      </nav>
+      <p class="footer__legal">© <span id="year"></span> <span data-config-text="brandName">Meridian Builders</span> · License #GC-0000000 · All rights reserved</p>
+    </div>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/scroll-engine.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
