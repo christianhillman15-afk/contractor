@@ -49,7 +49,7 @@
     var ctx = canvas.getContext("2d");
     var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     var frames = [];
-    var loaded = 0, failed = 0, ready = false, lastDrawn = -1;
+    var loaded = 0, failed = 0, ready = false, lastPos = -1;
     /* frames can be an explicit list of URLs (opts.list) or a
        numbered pattern (path/prefix/pad/ext/first/count) */
     var total = opts.list ? opts.list.length : (opts.count || 0);
@@ -95,46 +95,72 @@
         }
         ready = true;
         stage.classList.add("mode-frames");
-        lastDrawn = -1;
+        lastPos = -1;
         resize();
         notifyReady();
+        warmDecode(0);
       }
+    }
+
+    /* pre-decode frames off the critical path so scrubbing never
+       hitches on a first-time JPEG decode */
+    function warmDecode(i) {
+      if (i >= total) return;
+      var img = frames[i];
+      var next = function () { warmDecode(i + 1); };
+      if (img && img.decode) img.decode().then(next, next);
+      else next();
     }
 
     function resize() {
       var w = stage.clientWidth, h = stage.clientHeight;
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
-      lastDrawn = -1;
+      lastPos = -1;
     }
     window.addEventListener("resize", resize);
 
-    function draw(p) {
-      if (!ready) return;
-      var idx = clamp(Math.round(p * (total - 1)), 0, total - 1);
-      /* skip past any frame that individually failed — search forward,
-         then backward; never wrap (a missing final frame must resolve to
-         the finished house, not the empty lot) */
-      if (frames[idx] && !frames[idx].naturalWidth) {
-        var j = idx;
-        while (j < total && frames[j] && !frames[j].naturalWidth) j++;
-        if (j >= total) {
-          j = idx;
-          while (j >= 0 && frames[j] && !frames[j].naturalWidth) j--;
-        }
-        if (j < 0 || j >= total) return;
-        idx = j;
-      }
-      if (idx === lastDrawn) return;
-      var img = frames[idx];
-      if (!img || !img.naturalWidth) return;
-      lastDrawn = idx;
+    /* nearest loaded frame — search forward, then backward; never wrap
+       (a missing final frame must resolve to the finished house, not
+       the empty lot) */
+    function nearestLoaded(idx) {
+      if (frames[idx] && frames[idx].naturalWidth) return idx;
+      var j = idx;
+      while (j < total && frames[j] && !frames[j].naturalWidth) j++;
+      if (j < total) return j;
+      j = idx;
+      while (j >= 0 && frames[j] && !frames[j].naturalWidth) j--;
+      return j;
+    }
 
-      /* cover-fit */
+    function drawCover(img) {
       var cw = canvas.width, ch = canvas.height;
       var s = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
       var dw = img.naturalWidth * s, dh = img.naturalHeight * s;
       ctx.drawImage(img, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+    }
+
+    /* crossfade scrub: draw the frame below the play-head, then blend
+       the next one in proportionally — sub-frame motion reads as
+       continuous instead of stepping photo-to-photo */
+    function draw(p) {
+      if (!ready) return;
+      var pos = clamp(p, 0, 1) * (total - 1);
+      if (Math.abs(pos - lastPos) < 0.003) return;
+
+      var i0 = nearestLoaded(Math.floor(pos));
+      if (i0 < 0 || i0 >= total) return;
+      var frac = pos - Math.floor(pos);
+      var i1 = nearestLoaded(Math.min(Math.floor(pos) + 1, total - 1));
+      lastPos = pos;
+
+      ctx.globalAlpha = 1;
+      drawCover(frames[i0]);
+      if (i1 > i0 && frac > 0.01) {
+        ctx.globalAlpha = frac;
+        drawCover(frames[i1]);
+        ctx.globalAlpha = 1;
+      }
     }
 
     return { render: draw };
@@ -377,8 +403,8 @@
 
   function frame() {
     /* inertial smoothing — the build eases toward the scroll position */
-    current = lerp(current, target, 0.16);
-    if (Math.abs(current - target) < 0.0005) { current = target; idle++; }
+    current = lerp(current, target, 0.1);
+    if (Math.abs(current - target) < 0.0002) { current = target; idle++; }
     else idle = 0;
 
     if (renderer) renderer.render(current);
