@@ -53,7 +53,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-img { max-width: 100%; display: block; }
+img { max-width: 100%; height: auto; display: block; }
 
 ::selection { background: var(--koa); color: var(--white); }
 
@@ -433,7 +433,10 @@ html:not(.js) .site-header {
 .fact-list strong { color: var(--ink); font-weight: 700; }
 
 .legacy-people { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6rem; align-content: start; }
-.person img { border-radius: var(--radius); filter: grayscale(14%); }
+.person img {
+  width: 100%; aspect-ratio: 1 / 1; object-fit: cover;
+  border-radius: var(--radius); filter: grayscale(14%);
+}
 .person figcaption { margin-top: .7rem; display: flex; flex-direction: column; }
 .person strong { font-weight: 720; font-size: 1.05rem; }
 .person span { color: var(--ink-soft); font-size: .85rem; letter-spacing: .04em; }
