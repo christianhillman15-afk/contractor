@@ -88,10 +88,12 @@
     var frameDir = isSmall ? 'assets/frames/m/' : 'assets/frames/d/';
     var frames = new Array(FRAME_COUNT);
     var currentDrawn = -1;
-    var targetFrame = 0;
-    var shownFrame = 0;
+    var targetFrame = 0;   // float: exact frame position for the scroll offset
+    var shownFrame = 0;    // float: eased position actually rendered
     var rafPending = false;
     var scrubbing = false; // flips true once the first frame is on screen
+    var lastPaintKey = ''; // skip redundant redraws of the same blend
+    var lastTs = 0;
 
     function frameSrc(i) {
       return frameDir + 'f-' + String(i).padStart(3, '0') + '.webp';
@@ -116,9 +118,26 @@
       }
     }
 
-    function drawFrame(i) {
-      var img = frames[i] && frames[i].img;
-      if (!img) return;
+    function drawCover(img) {
+      var cw = canvas.width, ch = canvas.height;
+      var iw = img.naturalWidth, ih = img.naturalHeight;
+      var scale = Math.max(cw / iw, ch / ih);
+      var dw = iw * scale, dh = ih * scale;
+      ctx.drawImage(img, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+    }
+
+    // Render a fractional frame position by crossfading the two adjacent
+    // frames — motion reads as continuous rather than stepped.
+    function paintAt(pos) {
+      var i0 = Math.floor(pos);
+      var frac = pos - i0;
+      var base = (frames[i0] && frames[i0].ready) ? i0 : nearestLoaded(Math.round(pos));
+      if (base < 0) return;
+      var i1 = Math.min(i0 + 1, FRAME_COUNT - 1);
+      var blend = (base === i0 && frac > 0.01 && i1 !== i0 &&
+                   frames[i1] && frames[i1].ready) ? i1 : -1;
+      var key = base + '/' + (blend < 0 ? 'x' : blend + '@' + frac.toFixed(2));
+      if (key === lastPaintKey) return;
       if (!scrubbing) {
         // swap static fallback for live canvas BEFORE sizing: while
         // .no-scrub is on, the canvas is display:none and measures 0x0
@@ -126,12 +145,16 @@
         build.classList.remove('no-scrub');
       }
       sizeCanvas();
-      var cw = canvas.width, ch = canvas.height;
-      var iw = img.naturalWidth, ih = img.naturalHeight;
-      var scale = Math.max(cw / iw, ch / ih);
-      var dw = iw * scale, dh = ih * scale;
-      ctx.drawImage(img, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
-      currentDrawn = i;
+      ctx.imageSmoothingEnabled = true;
+      if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+      drawCover(frames[base].img);
+      if (blend >= 0) {
+        ctx.globalAlpha = frac;
+        drawCover(frames[blend].img);
+        ctx.globalAlpha = 1;
+      }
+      lastPaintKey = key;
+      currentDrawn = base;
     }
 
     function loadFrame(i, cb) {
@@ -165,14 +188,17 @@
     function requestPaint() {
       if (rafPending) return;
       rafPending = true;
-      requestAnimationFrame(function () {
+      requestAnimationFrame(function (ts) {
         rafPending = false;
-        // ease the shown frame toward the target for a smoother scrub feel
-        var diff = targetFrame - shownFrame;
-        shownFrame = Math.abs(diff) < 0.6 ? targetFrame : shownFrame + diff * 0.45;
-        var idx = nearestLoaded(Math.round(shownFrame));
-        if (idx >= 0 && idx !== currentDrawn) drawFrame(idx);
-        if (Math.round(shownFrame) !== targetFrame) requestPaint();
+        // frame-rate-independent glide toward the exact scroll position
+        var dt = lastTs ? Math.min(0.05, (ts - lastTs) / 1000) : 0.016;
+        lastTs = ts;
+        var k = 1 - Math.exp(-dt * 7);
+        shownFrame += (targetFrame - shownFrame) * k;
+        if (Math.abs(targetFrame - shownFrame) < 0.02) shownFrame = targetFrame;
+        paintAt(shownFrame);
+        if (shownFrame !== targetFrame) requestPaint();
+        else lastTs = 0;
       });
     }
 
@@ -217,7 +243,8 @@
       frameDir = isSmall ? 'assets/frames/m/' : 'assets/frames/d/';
       frames = new Array(FRAME_COUNT);
       currentDrawn = -1;
-      loadFrame(targetFrame, function () { requestPaint(); });
+      lastPaintKey = '';
+      loadFrame(Math.round(targetFrame), function () { requestPaint(); });
       loadPass(6, null);
       if (deepLoadStarted) { deepLoadStarted = false; startDeepLoad(); }
     }
@@ -231,7 +258,7 @@
       var total = rect.height - vh;
       progress = total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 0;
 
-      targetFrame = Math.min(FRAME_COUNT - 1, Math.round(progress * (FRAME_COUNT - 1)));
+      targetFrame = Math.min(FRAME_COUNT - 1, progress * (FRAME_COUNT - 1));
       requestPaint();
 
       // intro fades out over the first 12% of the scrub
@@ -257,6 +284,7 @@
     window.addEventListener('scroll', onScrub, { passive: true });
     window.addEventListener('resize', function () {
       currentDrawn = -1;
+      lastPaintKey = '';
       onScrub();
     });
     onScrub();
